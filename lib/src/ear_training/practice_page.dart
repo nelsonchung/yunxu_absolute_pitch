@@ -61,6 +61,18 @@ class _PracticePageState extends State<PracticePage> {
       ..start();
   }
 
+  String _feedbackMessage(SessionAttempt attempt, NotePitch selected) {
+    if (widget.mode == PracticeMode.noteBasics) {
+      return attempt.isCorrect
+          ? '答對了，這題是 ${_currentTarget.label}，${_currentTarget.keyboardHint}'
+          : '這題是 ${_currentTarget.label}，${_currentTarget.keyboardHint}。你選了 ${selected.label}';
+    }
+
+    return attempt.isCorrect
+        ? '答對了，這題是 ${_currentTarget.label}'
+        : '這題是 ${_currentTarget.label}，你選了 ${selected.label}';
+  }
+
   Future<void> _replayCurrentNote() async {
     if (_result != null) {
       return;
@@ -85,9 +97,7 @@ class _PracticePageState extends State<PracticePage> {
       _isAnswerLocked = true;
       _selectedNoteId = selected.id;
       _lastAnswerCorrect = attempt.isCorrect;
-      _feedback = attempt.isCorrect
-          ? '答對了，這題是 ${_currentTarget.label}'
-          : '這題是 ${_currentTarget.label}，你選了 ${selected.label}';
+      _feedback = _feedbackMessage(attempt, selected);
       _attempts.add(attempt);
     });
 
@@ -155,19 +165,34 @@ class _PracticePageState extends State<PracticePage> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 260),
             child: _result == null
-                ? _PracticeView(
-                    key: const ValueKey('practice'),
-                    session: _session,
-                    currentIndex: _currentIndex,
-                    currentTarget: _currentTarget,
-                    selectedNoteId: _selectedNoteId,
-                    feedback: _feedback,
-                    lastAnswerCorrect: _lastAnswerCorrect,
-                    controller: widget.controller,
-                    onReplay: _replayCurrentNote,
-                    onChoose: _submitAnswer,
-                    isAnswerLocked: _isAnswerLocked,
-                  )
+                ? (widget.mode == PracticeMode.noteBasics
+                      ? _NoteBasicsView(
+                          key: const ValueKey('noteBasics'),
+                          session: _session,
+                          currentIndex: _currentIndex,
+                          currentTarget: _currentTarget,
+                          selectedNoteId: _selectedNoteId,
+                          feedback: _feedback,
+                          lastAnswerCorrect: _lastAnswerCorrect,
+                          controller: widget.controller,
+                          onReplay: _replayCurrentNote,
+                          onPreview: widget.controller.play,
+                          onChoose: _submitAnswer,
+                          isAnswerLocked: _isAnswerLocked,
+                        )
+                      : _PracticeView(
+                          key: const ValueKey('practice'),
+                          session: _session,
+                          currentIndex: _currentIndex,
+                          currentTarget: _currentTarget,
+                          selectedNoteId: _selectedNoteId,
+                          feedback: _feedback,
+                          lastAnswerCorrect: _lastAnswerCorrect,
+                          controller: widget.controller,
+                          onReplay: _replayCurrentNote,
+                          onChoose: _submitAnswer,
+                          isAnswerLocked: _isAnswerLocked,
+                        ))
                 : _ResultView(
                     key: const ValueKey('result'),
                     result: _result!,
@@ -369,7 +394,7 @@ class _PracticeView extends StatelessWidget {
                 : Colors.white;
 
             return SizedBox(
-              width: _buttonWidthFor(context),
+              width: _buttonWidthFor(context, session.answerOptions.length),
               child: FilledButton(
                 onPressed: isAnswerLocked ? null : () => onChoose(note),
                 style: FilledButton.styleFrom(
@@ -401,6 +426,338 @@ class _PracticeView extends StatelessWidget {
           }).toList(),
         ),
       ],
+    );
+  }
+}
+
+class _NoteBasicsView extends StatelessWidget {
+  const _NoteBasicsView({
+    super.key,
+    required this.session,
+    required this.currentIndex,
+    required this.currentTarget,
+    required this.selectedNoteId,
+    required this.feedback,
+    required this.lastAnswerCorrect,
+    required this.controller,
+    required this.onReplay,
+    required this.onPreview,
+    required this.onChoose,
+    required this.isAnswerLocked,
+  });
+
+  final PracticeSessionBlueprint session;
+  final int currentIndex;
+  final NotePitch currentTarget;
+  final String? selectedNoteId;
+  final String? feedback;
+  final bool? lastAnswerCorrect;
+  final EarTrainingController controller;
+  final Future<void> Function() onReplay;
+  final Future<void> Function(NotePitch note) onPreview;
+  final Future<void> Function(NotePitch selected) onChoose;
+  final bool isAnswerLocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final progressValue = (currentIndex + 1) / session.targets.length;
+    final focusLabels = session.answerOptions
+        .map((note) => note.label)
+        .join('、');
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      children: [
+        Row(
+          children: [
+            IconButton.filledTonal(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            const Spacer(),
+            Text(
+              session.mode.title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Text(
+          '先熟 $focusLabels',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '第 ${currentIndex + 1} / ${session.targets.length} 題。這輪只用 ${session.answerOptions.length} 個音，先對照聲音和位置，再慢慢答。',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Colors.white.withValues(alpha: 0.84),
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 18),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            minHeight: 9,
+            value: progressValue,
+            backgroundColor: Colors.white.withValues(alpha: 0.18),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF9BF73)),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '本輪重點音',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '先按卡片反覆對照，建立音名和鍵位感覺。',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF607179),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...session.answerOptions.map((note) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ReferenceNoteCard(
+                      note: note,
+                      onPressed: () => onPreview(note),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Text(
+                  '播放題目音',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '聽完不確定時，可以回到上面重新對照，再回來作答。',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF607179),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: 124,
+                  height: 124,
+                  child: FilledButton(
+                    onPressed: onReplay,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF173A4B),
+                      shape: const CircleBorder(),
+                    ),
+                    child: controller.isPlaying
+                        ? const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.volume_up_rounded, size: 50),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: feedback == null
+              ? const SizedBox(height: 58)
+              : Container(
+                  key: ValueKey(feedback),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (lastAnswerCorrect ?? false)
+                        ? const Color(0xFFDDF3E8)
+                        : const Color(0xFFFCE3D6),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        (lastAnswerCorrect ?? false)
+                            ? Icons.check_circle_rounded
+                            : Icons.error_rounded,
+                        color: (lastAnswerCorrect ?? false)
+                            ? const Color(0xFF167E55)
+                            : const Color(0xFFB2512F),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          feedback!,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color: const Color(0xFF29404A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          '選出你聽到的音名',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...session.answerOptions.map((note) {
+          final isSelected = selectedNoteId == note.id;
+          final isCorrectReveal =
+              isAnswerLocked && currentTarget.id == note.id && !isSelected;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: _buttonWidthFor(context, 1),
+              child: FilledButton(
+                onPressed: isAnswerLocked ? null : () => onChoose(note),
+                style: FilledButton.styleFrom(
+                  backgroundColor: isSelected
+                      ? const Color(0xFFF7C37B)
+                      : const Color(0xFFFFFBF4),
+                  foregroundColor: const Color(0xFF23353D),
+                  disabledBackgroundColor: isCorrectReveal
+                      ? const Color(0xFFBEE8D6)
+                      : const Color(0xFFFFFBF4).withValues(alpha: 0.96),
+                  disabledForegroundColor: isCorrectReveal
+                      ? const Color(0xFF114A39)
+                      : const Color(0xFF23353D).withValues(alpha: 0.92),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      note.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      note.keyboardHint,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _ReferenceNoteCard extends StatelessWidget {
+  const _ReferenceNoteCard({required this.note, required this.onPressed});
+
+  final NotePitch note;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onPressed,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F1E7),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Color(0xFF173A4B),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      note.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      note.keyboardHint,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF607179),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.volume_up_rounded, color: Color(0xFF173A4B)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -589,9 +946,13 @@ class _ResultStat extends StatelessWidget {
   }
 }
 
-double _buttonWidthFor(BuildContext context) {
+double _buttonWidthFor(BuildContext context, int optionCount) {
+  if (optionCount <= 1) {
+    return MediaQuery.sizeOf(context).width - 40;
+  }
+
   final width = MediaQuery.sizeOf(context).width - 52;
-  const columns = 4;
+  final columns = optionCount <= 4 ? optionCount : 4;
   return (width - ((columns - 1) * 12)) / columns;
 }
 

@@ -1,27 +1,31 @@
 import 'dart:math';
 
-enum PracticeMode { whiteKeys, chromatic, weakSpots }
+enum PracticeMode { noteBasics, whiteKeys, chromatic, weakSpots }
 
 extension PracticeModePresentation on PracticeMode {
   String get title => switch (this) {
+    PracticeMode.noteBasics => '七音認識',
     PracticeMode.whiteKeys => '白鍵入門',
     PracticeMode.chromatic => '十二音挑戰',
     PracticeMode.weakSpots => '弱點加強',
   };
 
   String get subtitle => switch (this) {
+    PracticeMode.noteBasics => '先用 2 到 3 個白鍵音建立音名、位置與聲音連結。',
     PracticeMode.whiteKeys => '從 C 大調七個音開始，建立基本聽感標籤。',
     PracticeMode.chromatic => '擴展到 12 個半音，開始練真實辨識速度。',
     PracticeMode.weakSpots => '把最近最容易錯的音拉出來密集複習。',
   };
 
   int get questionCount => switch (this) {
+    PracticeMode.noteBasics => 6,
     PracticeMode.whiteKeys => 10,
     PracticeMode.chromatic => 12,
     PracticeMode.weakSpots => 12,
   };
 
   List<NotePitch> answerOptions(ProgressSnapshot progress) => switch (this) {
+    PracticeMode.noteBasics => progress.beginnerFocusNotes(),
     PracticeMode.whiteKeys => NotePitch.whiteKeys,
     PracticeMode.chromatic => NotePitch.chromatic,
     PracticeMode.weakSpots => NotePitch.chromatic,
@@ -29,6 +33,8 @@ extension PracticeModePresentation on PracticeMode {
 
   List<NotePitch> questionPool(ProgressSnapshot progress) {
     switch (this) {
+      case PracticeMode.noteBasics:
+        return progress.beginnerFocusNotes();
       case PracticeMode.whiteKeys:
         return NotePitch.whiteKeys;
       case PracticeMode.chromatic:
@@ -42,6 +48,8 @@ extension PracticeModePresentation on PracticeMode {
     }
   }
 }
+
+enum NoteLearningStage { unseen, practicing, familiar }
 
 class NotePitch {
   const NotePitch({
@@ -57,6 +65,17 @@ class NotePitch {
   final double frequency;
   final String assetName;
   final bool isWhiteKey;
+
+  String get keyboardHint => switch (id) {
+    'c4' => '在兩個黑鍵的左邊',
+    'd4' => '在兩個黑鍵的中間',
+    'e4' => '在兩個黑鍵的右邊',
+    'f4' => '在三個黑鍵的左邊',
+    'g4' => '在三個黑鍵的中間偏左',
+    'a4' => '在三個黑鍵的中間偏右',
+    'b4' => '在三個黑鍵的右邊',
+    _ => '先注意它附近的黑鍵位置',
+  };
 
   static const chromatic = <NotePitch>[
     NotePitch(
@@ -407,6 +426,12 @@ class ProgressSnapshot {
   int get averageResponseMs =>
       totalAttempts == 0 ? 0 : totalResponseMs ~/ totalAttempts;
 
+  int get familiarWhiteKeyCount => NotePitch.whiteKeys
+      .where((note) => learningStageFor(note) == NoteLearningStage.familiar)
+      .length;
+
+  bool get needsNoteBasics => familiarWhiteKeyCount < 3;
+
   List<NotePitch> weakestNotes({int limit = 3}) {
     final ranked =
         noteStats.entries.where((entry) => entry.value.attempts > 0).toList()
@@ -426,6 +451,58 @@ class ProgressSnapshot {
         .take(limit)
         .map((entry) => NotePitch.byId[entry.key]!)
         .toList();
+  }
+
+  NoteLearningStage learningStageFor(NotePitch note) {
+    final stat = noteStats[note.id];
+    if (stat == null || stat.attempts == 0) {
+      return NoteLearningStage.unseen;
+    }
+    if (stat.attempts >= 3 && stat.accuracy >= 0.75) {
+      return NoteLearningStage.familiar;
+    }
+    return NoteLearningStage.practicing;
+  }
+
+  List<NotePitch> beginnerFocusNotes({int count = 3}) {
+    const defaultOrder = {
+      'c4': 0,
+      'f4': 1,
+      'g4': 2,
+      'd4': 3,
+      'e4': 4,
+      'a4': 5,
+      'b4': 6,
+    };
+
+    final ranked = [...NotePitch.whiteKeys]
+      ..sort((left, right) {
+        final leftStage = learningStageFor(left);
+        final rightStage = learningStageFor(right);
+        final byStage = leftStage.index.compareTo(rightStage.index);
+        if (byStage != 0) {
+          return byStage;
+        }
+
+        final leftStat = noteStats[left.id] ?? const NotePerformance.empty();
+        final rightStat = noteStats[right.id] ?? const NotePerformance.empty();
+        final byAttempts = leftStat.attempts.compareTo(rightStat.attempts);
+        if (byAttempts != 0) {
+          return byAttempts;
+        }
+
+        final byAccuracy = leftStat.accuracy.compareTo(rightStat.accuracy);
+        if (byAccuracy != 0) {
+          return byAccuracy;
+        }
+
+        return defaultOrder[left.id]!.compareTo(defaultOrder[right.id]!);
+      });
+
+    final selected = ranked.take(count).toList()
+      ..sort((left, right) => left.frequency.compareTo(right.frequency));
+
+    return selected;
   }
 
   ProgressSnapshot merge(PracticeSessionResult result) {

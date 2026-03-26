@@ -15,7 +15,12 @@ class EarTrainingHomePage extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final progress = controller.progress;
+        final beginnerNotes = progress.beginnerFocusNotes();
         final weakNotes = progress.weakestNotes();
+        final recommendedMode = _recommendedMode(
+          progress,
+          controller.canStartWeakSpotReview,
+        );
 
         return Scaffold(
           body: DecoratedBox(
@@ -42,9 +47,15 @@ class EarTrainingHomePage extends StatelessWidget {
                       _OverviewCard(progress: progress),
                       const SizedBox(height: 20),
                       _FocusCard(
-                        title: weakNotes.isEmpty ? '今日建議' : '近期弱點',
-                        body: weakNotes.isEmpty
-                            ? '先從白鍵入門開始，熟悉 C 大調七個音的聲音標籤。'
+                        title: progress.needsNoteBasics
+                            ? '今天先熟這幾個音'
+                            : weakNotes.isEmpty
+                            ? '今日建議'
+                            : '近期弱點',
+                        body: progress.needsNoteBasics
+                            ? '先把 ${beginnerNotes.map((note) => note.label).join('、')} 聽熟、看熟，再進白鍵入門會輕鬆很多。'
+                            : weakNotes.isEmpty
+                            ? '白鍵七音已經開始建立輪廓，可以繼續拉高穩定度。'
                             : '先複習 ${weakNotes.map((note) => note.label).join('、')}，再進入十二音模式。',
                       ),
                       const SizedBox(height: 24),
@@ -63,6 +74,7 @@ class EarTrainingHomePage extends StatelessWidget {
                             enabled:
                                 mode != PracticeMode.weakSpots ||
                                 controller.canStartWeakSpotReview,
+                            isRecommended: mode == recommendedMode,
                             onPressed: () => _openPractice(context, mode),
                           ),
                         ),
@@ -174,6 +186,36 @@ class _OverviewCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Text(
+                  '七音熟悉度',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${progress.familiarWhiteKeyCount}/7',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: const Color(0xFF617179),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: NotePitch.whiteKeys.map((note) {
+                return _NoteProgressChip(
+                  note: note,
+                  stage: progress.learningStageFor(note),
+                );
+              }).toList(),
+            ),
           ],
         ),
       ),
@@ -251,11 +293,13 @@ class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.mode,
     required this.enabled,
+    required this.isRecommended,
     required this.onPressed,
   });
 
   final PracticeMode mode;
   final bool enabled;
+  final bool isRecommended;
   final VoidCallback onPressed;
 
   @override
@@ -279,6 +323,7 @@ class _ModeCard extends StatelessWidget {
                 ),
                 child: Icon(
                   switch (mode) {
+                    PracticeMode.noteBasics => Icons.music_note_rounded,
                     PracticeMode.whiteKeys => Icons.piano,
                     PracticeMode.chromatic => Icons.graphic_eq,
                     PracticeMode.weakSpots => Icons.track_changes,
@@ -299,6 +344,27 @@ class _ModeCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (isRecommended && enabled) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F1EC),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '推薦從這裡開始',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: const Color(0xFF0C7A6B),
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       enabled ? mode.subtitle : '完成幾輪練習後，這裡會自動解鎖。',
@@ -334,7 +400,7 @@ class _EmptyHistoryCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(22),
         child: Text(
-          '先完成一輪練習，這裡就會開始記錄正確率和反應速度。',
+          '先從七音認識開始，這裡就會慢慢記錄你的正確率和反應速度。',
           style: Theme.of(
             context,
           ).textTheme.bodyLarge?.copyWith(color: const Color(0xFF617179)),
@@ -384,6 +450,62 @@ class _RecentSessionCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NoteProgressChip extends StatelessWidget {
+  const _NoteProgressChip({required this.note, required this.stage});
+
+  final NotePitch note;
+  final NoteLearningStage stage;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, foreground, marker) = switch (stage) {
+      NoteLearningStage.unseen => (
+        const Color(0xFFF4E7D7),
+        const Color(0xFF7A6551),
+        '未碰過',
+      ),
+      NoteLearningStage.practicing => (
+        const Color(0xFFFFE7BF),
+        const Color(0xFF8A5A12),
+        '練習中',
+      ),
+      NoteLearningStage.familiar => (
+        const Color(0xFFDDF3E8),
+        const Color(0xFF1C6B4A),
+        '已建立',
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            note.label,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            marker,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -445,4 +567,20 @@ String _formatSessionTime(DateTime completedAt) {
   final hour = completedAt.hour.toString().padLeft(2, '0');
   final minute = completedAt.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
+}
+
+PracticeMode _recommendedMode(
+  ProgressSnapshot progress,
+  bool canStartWeakSpotReview,
+) {
+  if (progress.needsNoteBasics) {
+    return PracticeMode.noteBasics;
+  }
+  if (progress.familiarWhiteKeyCount < NotePitch.whiteKeys.length) {
+    return PracticeMode.whiteKeys;
+  }
+  if (canStartWeakSpotReview && progress.weakestNotes().isNotEmpty) {
+    return PracticeMode.weakSpots;
+  }
+  return PracticeMode.chromatic;
 }

@@ -27,11 +27,12 @@ SAMPLE_RATE = 44_100
 OUTPUT_DURATION_SECONDS = 1.8
 SOURCE_WINDOW_SECONDS = 2.4
 PRE_ROLL_SECONDS = 0.008
-FADE_IN_SECONDS = 0.003
+FADE_IN_SECONDS = 0.006
 FADE_OUT_SECONDS = 0.12
 TARGET_PEAK = 25_000
+LOW_PASS_CUTOFF_HZ = 4_200
 
-SOURCE_VERSION = "v8"
+SOURCE_VERSION = "v6"
 SOURCE_BASE_URL = (
     "https://raw.githubusercontent.com/sfzinstruments/SalamanderGrandPiano/"
     "master/Samples"
@@ -134,6 +135,23 @@ def resample_linear(samples: list[int], ratio: float) -> list[float]:
     return output
 
 
+def apply_low_pass(samples: list[float], cutoff_hz: float) -> list[float]:
+    if cutoff_hz <= 0:
+        return samples
+
+    dt = 1.0 / SAMPLE_RATE
+    rc = 1.0 / (2.0 * math.pi * cutoff_hz)
+    alpha = dt / (rc + dt)
+
+    filtered: list[float] = []
+    current = samples[0] if samples else 0.0
+    for sample in samples:
+        current += alpha * (sample - current)
+        filtered.append(current)
+
+    return filtered
+
+
 def trim_and_shape(samples: list[float]) -> list[int]:
     target_length = int(OUTPUT_DURATION_SECONDS * SAMPLE_RATE)
     if len(samples) < target_length:
@@ -195,7 +213,8 @@ def generate_note(target_name: str, target_midi: int, source_cache: dict[str, li
 
     ratio = 2 ** ((target_midi - source_midi) / 12)
     pitched = resample_linear(window, ratio)
-    shaped = trim_and_shape(pitched)
+    softened = apply_low_pass(pitched, LOW_PASS_CUTOFF_HZ)
+    shaped = trim_and_shape(softened)
     write_wav(OUTPUT_DIR / f"{target_name}.wav", shaped)
 
     semitone_shift = target_midi - source_midi

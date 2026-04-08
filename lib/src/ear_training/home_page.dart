@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../intro/intro_page.dart';
 import 'controller.dart';
 import 'note_library.dart';
 import 'practice_page.dart';
@@ -42,7 +43,7 @@ class EarTrainingHomePage extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                     children: [
-                      const _Header(),
+                      _Header(onOpenIntro: () => _openIntro(context)),
                       const SizedBox(height: 20),
                       _OverviewCard(progress: progress),
                       const SizedBox(height: 20),
@@ -114,30 +115,59 @@ class EarTrainingHomePage extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _openIntro(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (pageContext) => IntroPage(
+          dismissLabel: '關閉',
+          onFinished: () async {
+            Navigator.of(pageContext).pop();
+          },
+        ),
+      ),
+    );
+  }
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.onOpenIntro});
+
+  final VoidCallback onOpenIntro;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Yunxu Ear Lab',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Yunxu Ear Lab',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '把耳訓拆成每天都做得完的短練習，先建立準確，再追求速度。',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: const Color(0xFF4D626A),
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          '把耳訓拆成每天都做得完的短練習，先建立準確，再追求速度。',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: const Color(0xFF4D626A),
-            height: 1.4,
-          ),
+        const SizedBox(width: 12),
+        IconButton.filledTonal(
+          tooltip: '查看介紹',
+          onPressed: onOpenIntro,
+          icon: const Icon(Icons.info_outline_rounded),
         ),
       ],
     );

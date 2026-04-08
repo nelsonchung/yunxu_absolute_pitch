@@ -6,6 +6,7 @@ import 'note_library.dart';
 
 class ProgressRepository {
   static const _storageKey = 'yunxu_ear_training_progress_v1';
+  static const _introSeenKey = 'yunxu_intro_seen_v1';
 
   Future<ProgressSnapshot> load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -26,5 +27,15 @@ class ProgressRepository {
   Future<void> save(ProgressSnapshot snapshot) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_storageKey, jsonEncode(snapshot.toJson()));
+  }
+
+  Future<bool> hasSeenIntro() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_introSeenKey) ?? false;
+  }
+
+  Future<void> markIntroSeen() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_introSeenKey, true);
   }
 }

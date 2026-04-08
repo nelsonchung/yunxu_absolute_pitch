@@ -6,6 +6,7 @@ import 'ear_training/controller.dart';
 import 'ear_training/home_page.dart';
 import 'ear_training/note_player.dart';
 import 'ear_training/progress_repository.dart';
+import 'intro/intro_page.dart';
 
 class EarTrainingApp extends StatefulWidget {
   const EarTrainingApp({super.key});
@@ -16,16 +17,19 @@ class EarTrainingApp extends StatefulWidget {
 
 class _EarTrainingAppState extends State<EarTrainingApp> {
   late final EarTrainingController _controller;
+  late final ProgressRepository _repository;
   late final Future<void> _bootstrap;
+  var _hasSeenIntro = false;
 
   @override
   void initState() {
     super.initState();
+    _repository = ProgressRepository();
     _controller = EarTrainingController(
-      repository: ProgressRepository(),
+      repository: _repository,
       player: NotePlayer(),
     );
-    _bootstrap = _controller.load();
+    _bootstrap = _loadAppState();
   }
 
   @override
@@ -47,10 +51,31 @@ class _EarTrainingAppState extends State<EarTrainingApp> {
             return const _BootScreen();
           }
 
+          if (!_hasSeenIntro) {
+            return IntroPage(onFinished: _completeIntro);
+          }
+
           return EarTrainingHomePage(controller: _controller);
         },
       ),
     );
+  }
+
+  Future<void> _loadAppState() async {
+    await _controller.load();
+    _hasSeenIntro = await _repository.hasSeenIntro();
+  }
+
+  Future<void> _completeIntro() async {
+    await _repository.markIntroSeen();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _hasSeenIntro = true;
+    });
   }
 
   ThemeData _buildTheme() {

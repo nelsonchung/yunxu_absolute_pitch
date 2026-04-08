@@ -2,6 +2,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yunxu_absolute_pitch/src/ear_training/note_library.dart';
 
 void main() {
+  test('chromatic note assets use the piano mp3 library', () {
+    expect(
+      NotePitch.chromatic.every(
+        (note) =>
+            note.assetName.startsWith('piano-mp3/') &&
+            note.assetName.endsWith('.mp3'),
+      ),
+      isTrue,
+    );
+
+    expect(NotePitch.byId['c4']?.assetName, 'piano-mp3/C4.mp3');
+    expect(NotePitch.byId['cs4']?.assetName, 'piano-mp3/Db4.mp3');
+    expect(NotePitch.byId['ds4']?.assetName, 'piano-mp3/Eb4.mp3');
+    expect(NotePitch.byId['fs4']?.assetName, 'piano-mp3/Gb4.mp3');
+    expect(NotePitch.byId['gs4']?.assetName, 'piano-mp3/Ab4.mp3');
+    expect(NotePitch.byId['as4']?.assetName, 'piano-mp3/Bb4.mp3');
+  });
+
   test('note basics starts from three anchor white keys', () {
     const progress = ProgressSnapshot.empty();
 

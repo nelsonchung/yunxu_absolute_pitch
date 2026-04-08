@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yunxu_absolute_pitch/src/ear_training/note_library.dart';
+import 'package:yunxu_absolute_pitch/src/version/version_declaration_page.dart';
 
 void main() {
   test('chromatic note assets use the piano mp3 library', () {
@@ -97,5 +98,19 @@ void main() {
       'a4',
     ]);
     expect(snapshot.needsNoteBasics, isTrue);
+  });
+
+  test('version metadata reads package name and build number from pubspec', () {
+    const pubspec = '''
+name: yunxu_absolute_pitch
+version: 1.2.3+45
+''';
+
+    final metadata = VersionMetadata.fromPubspec(pubspec);
+
+    expect(metadata.packageName, 'yunxu_absolute_pitch');
+    expect(metadata.versionName, '1.2.3');
+    expect(metadata.buildNumber, '45');
+    expect(metadata.fullVersion, '1.2.3+45');
   });
 }

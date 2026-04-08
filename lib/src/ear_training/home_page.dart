@@ -1,12 +1,59 @@
 import 'package:flutter/material.dart';
 
 import '../intro/intro_page.dart';
+import '../version/version_declaration_page.dart';
 import 'controller.dart';
 import 'note_library.dart';
 import 'practice_page.dart';
 
-class EarTrainingHomePage extends StatelessWidget {
+class EarTrainingHomePage extends StatefulWidget {
   const EarTrainingHomePage({super.key, required this.controller});
+
+  final EarTrainingController controller;
+
+  @override
+  State<EarTrainingHomePage> createState() => _EarTrainingHomePageState();
+}
+
+class _EarTrainingHomePageState extends State<EarTrainingHomePage> {
+  var _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          _TrainingDashboardTab(controller: widget.controller),
+          const VersionDeclarationPage(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.graphic_eq_rounded),
+            selectedIcon: Icon(Icons.graphic_eq_rounded),
+            label: '練習',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.verified_outlined),
+            selectedIcon: Icon(Icons.verified_rounded),
+            label: '版本宣告',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrainingDashboardTab extends StatelessWidget {
+  const _TrainingDashboardTab({required this.controller});
 
   final EarTrainingController controller;
 
@@ -23,85 +70,79 @@ class EarTrainingHomePage extends StatelessWidget {
           controller.canStartWeakSpotReview,
         );
 
-        return Scaffold(
-          body: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFFFF4DE),
-                  Color(0xFFE8F4F0),
-                  Color(0xFFFDF7ED),
-                ],
-              ),
+        return DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFF4DE), Color(0xFFE8F4F0), Color(0xFFFDF7ED)],
             ),
-            child: Stack(
-              children: [
-                const _BackdropOrbs(),
-                SafeArea(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                    children: [
-                      _Header(onOpenIntro: () => _openIntro(context)),
-                      const SizedBox(height: 20),
-                      _OverviewCard(progress: progress),
-                      const SizedBox(height: 20),
-                      _FocusCard(
-                        title: progress.needsNoteBasics
-                            ? '今天先熟這幾個音'
-                            : weakNotes.isEmpty
-                            ? '今日建議'
-                            : '近期弱點',
-                        body: progress.needsNoteBasics
-                            ? '先把 ${beginnerNotes.map((note) => note.label).join('、')} 聽熟、看熟，再進白鍵入門會輕鬆很多。'
-                            : weakNotes.isEmpty
-                            ? '白鍵七音已經開始建立輪廓，可以繼續拉高穩定度。'
-                            : '先複習 ${weakNotes.map((note) => note.label).join('、')}，再進入十二音模式。',
+          ),
+          child: Stack(
+            children: [
+              const _BackdropOrbs(),
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                  children: [
+                    _Header(onOpenIntro: () => _openIntro(context)),
+                    const SizedBox(height: 20),
+                    _OverviewCard(progress: progress),
+                    const SizedBox(height: 20),
+                    _FocusCard(
+                      title: progress.needsNoteBasics
+                          ? '今天先熟這幾個音'
+                          : weakNotes.isEmpty
+                          ? '今日建議'
+                          : '近期弱點',
+                      body: progress.needsNoteBasics
+                          ? '先把 ${beginnerNotes.map((note) => note.label).join('、')} 聽熟、看熟，再進白鍵入門會輕鬆很多。'
+                          : weakNotes.isEmpty
+                          ? '白鍵七音已經開始建立輪廓，可以繼續拉高穩定度。'
+                          : '先複習 ${weakNotes.map((note) => note.label).join('、')}，再進入十二音模式。',
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '開始練習',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        '開始練習',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                    ),
+                    const SizedBox(height: 14),
+                    ...PracticeMode.values.map(
+                      (mode) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _ModeCard(
+                          mode: mode,
+                          enabled:
+                              mode != PracticeMode.weakSpots ||
+                              controller.canStartWeakSpotReview,
+                          isRecommended: mode == recommendedMode,
+                          onPressed: () => _openPractice(context, mode),
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      ...PracticeMode.values.map(
-                        (mode) => Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: _ModeCard(
-                            mode: mode,
-                            enabled:
-                                mode != PracticeMode.weakSpots ||
-                                controller.canStartWeakSpotReview,
-                            isRecommended: mode == recommendedMode,
-                            onPressed: () => _openPractice(context, mode),
-                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '最近練習',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (progress.recentSessions.isEmpty)
+                      const _EmptyHistoryCard()
+                    else
+                      ...progress.recentSessions.map(
+                        (session) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _RecentSessionCard(session: session),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '最近練習',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      if (progress.recentSessions.isEmpty)
-                        const _EmptyHistoryCard()
-                      else
-                        ...progress.recentSessions.map(
-                          (session) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _RecentSessionCard(session: session),
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

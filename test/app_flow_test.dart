@@ -23,6 +23,18 @@ void main() {
 
     expect(find.text('Yunxu Ear Lab'), findsOneWidget);
     expect(find.byTooltip('查看介紹'), findsOneWidget);
+    expect(find.text('版本宣告'), findsOneWidget);
+
+    await tester.tap(find.text('版本宣告'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('本版內容'), findsOneWidget);
+    expect(find.text('音檔來源'), findsOneWidget);
+    expect(find.textContaining('MIT License'), findsOneWidget);
+    expect(find.textContaining('完整宣告版本：'), findsOneWidget);
+
+    await tester.tap(find.text('練習'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('查看介紹'));
     await tester.pumpAndSettle();

@@ -51,6 +51,20 @@ class _IntroPageState extends State<IntroPage> {
       accent: Color(0xFF173A4B),
       icon: Icons.lightbulb_rounded,
     ),
+    _IntroSectionData(
+      tabLabel: '看懂進度',
+      badge: '知道下一步',
+      title: '首頁會幫你整理近期狀態，知道現在該練什麼',
+      description: '你會看到總練習次數、整體正確率、平均反應，以及最近比較不穩的音，方便決定下一輪該從哪裡開始。',
+      panelTitle: '首頁可以怎麼看',
+      panelItems: [
+        '訓練概況：快速掌握正確率和反應速度',
+        '今日建議：先看系統目前推薦你練的音',
+        '最近練習：回頭檢查自己有沒有越來越穩',
+      ],
+      accent: Color(0xFF6C63FF),
+      icon: Icons.insights_rounded,
+    ),
   ];
 
   final PageController _pageController = PageController();

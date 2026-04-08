@@ -45,6 +45,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('練習時的小習慣'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('intro-tab-3')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('首頁可以怎麼看'), findsOneWidget);
     expect(find.byKey(const Key('intro-finish-button')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('intro-finish-button')));

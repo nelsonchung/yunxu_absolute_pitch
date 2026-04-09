@@ -74,7 +74,7 @@ def build_base() -> Image.Image:
     return result
 
 
-def draw_yel(size: int) -> Image.Image:
+def draw_yap(size: int) -> Image.Image:
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
 
@@ -84,9 +84,15 @@ def draw_yel(size: int) -> Image.Image:
     color = (*NEW_MONOGRAM, 255)
     glyph_top = 440
     glyph_bottom = 875
-    l_top = 404
     y_top = 440
     y_join = 605
+    a_left_base = 448
+    a_apex = 550
+    a_right_base = 652
+    a_crossbar_y = 698
+    p_left = 748
+    p_right = 900
+    p_mid = 650
 
     def point(x: float, y: float) -> tuple[int, int]:
         return round(x * scale), round(y * scale)
@@ -103,7 +109,7 @@ def draw_yel(size: int) -> Image.Image:
             fill=color,
         )
 
-    # Rounded, monoline forms keep the original lower-mark feel while adding E.
+    # Rounded, monoline forms keep the original lower-mark feel while spelling YAP.
     draw.line(
         [point(145, y_top), point(265, y_join), point(265, glyph_bottom)],
         fill=color,
@@ -118,42 +124,42 @@ def draw_yel(size: int) -> Image.Image:
     )
 
     draw.line(
-        [point(468, glyph_top), point(468, glyph_bottom)],
-        fill=color,
-        width=stroke,
-    )
-    draw.line(
-        [point(468, glyph_top), point(620, glyph_top)],
-        fill=color,
-        width=stroke,
-    )
-    draw.line(
-        [point(468, 658), point(590, 658)],
-        fill=color,
-        width=stroke,
-    )
-    draw.line(
-        [point(468, glyph_bottom), point(620, glyph_bottom)],
-        fill=color,
-        width=stroke,
-    )
-    dot(468, glyph_top)
-    dot(468, 658)
-    dot(468, glyph_bottom)
-
-    draw.line(
-        [point(735, l_top), point(735, glyph_bottom), point(902, glyph_bottom)],
+        [point(a_left_base, glyph_bottom), point(a_apex, glyph_top), point(a_right_base, glyph_bottom)],
         fill=color,
         width=stroke,
         joint="curve",
     )
+    draw.line(
+        [point(498, a_crossbar_y), point(602, a_crossbar_y)],
+        fill=color,
+        width=stroke,
+    )
+    dot(a_apex, glyph_top)
+    dot(498, a_crossbar_y)
+    dot(602, a_crossbar_y)
+
+    draw.line(
+        [
+            point(p_left, glyph_bottom),
+            point(p_left, glyph_top),
+            point(p_right, glyph_top),
+            point(p_right, p_mid),
+            point(p_left, p_mid),
+        ],
+        fill=color,
+        width=stroke,
+        joint="curve",
+    )
+    dot(p_right, glyph_top)
+    dot(p_right, p_mid)
+    dot(p_left, p_mid)
 
     return canvas
 
 
 def render_icon() -> Image.Image:
     base = build_base()
-    monogram = draw_yel(1024 * SUPERSAMPLE).resize(
+    monogram = draw_yap(1024 * SUPERSAMPLE).resize(
         (1024, 1024),
         Image.Resampling.LANCZOS,
     )
